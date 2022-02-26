@@ -33,11 +33,13 @@ class EMOJI:
 
 class HtmlFormatter(TelegramFormatter):
     """HTML formatter for telegram."""
-    fmt = '<code>%(asctime)s</code> <b>%(levelname)s</b>\nFrom %(name)s:%(funcName)s\n%(message)s'
+    # fmt = '<code>%(asctime)s</code> <b>%(levelname)s</b>\nFrom %(name)s:%(funcName)s\n%(message)s'
+    fmt = '<pre>%(asctime)s\n%(name)s\n%(levelname)s\n\n%(message)s</pre>'
     parse_mode = 'HTML'
 
     def __init__(self, *args, **kwargs):
-        self.use_emoji = kwargs.pop('use_emoji', False)
+        self.use_emoji = kwargs.pop('use_emoji', True)
+
         super(HtmlFormatter, self).__init__(*args, **kwargs)
 
     def format(self, record):
@@ -50,15 +52,21 @@ class HtmlFormatter(TelegramFormatter):
             record.funcName = escape_html(str(record.funcName))
         if record.name:
             record.name = escape_html(str(record.name))
-        if record.msg:
-            record.msg = escape_html(record.getMessage())
+        if record.message:
+            record.message = escape_html(str(record.message))
         if self.use_emoji:
             if record.levelno == logging.DEBUG:
-                record.levelname += ' ' + EMOJI.WHITE_CIRCLE
+                record.levelname # += ' ' + EMOJI.WHITE_CIRCLE
             elif record.levelno == logging.INFO:
-                record.levelname += ' ' + EMOJI.BLUE_CIRCLE
+                record.levelname # += ' ' + EMOJI.BLUE_CIRCLE
             else:
                 record.levelname += ' ' + EMOJI.RED_CIRCLE
+
+        if record.exc_info:
+            if record.message[-1] != '\n':
+                record.message += '\n'
+            
+            record.message += '\n' + self.formatException(record.exc_info)
 
         if hasattr(self, '_style'):
             return self._style.format(record)
