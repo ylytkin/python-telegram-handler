@@ -4,6 +4,7 @@ from io import BytesIO
 import requests
 
 from telegram_handler.formatters import HtmlFormatter
+from telegram_handler.utils import close_open_tags
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.NOTSET)
@@ -92,10 +93,24 @@ class TelegramHandler(logging.Handler):
         if getattr(self.formatter, 'parse_mode', None):
             data['parse_mode'] = self.formatter.parse_mode
 
+        responses = []
+
         if len(text) < MAX_MESSAGE_LEN:
             response = self.send_message(text, **data)
-        else:
-            response = self.send_document(text[:1000], document=BytesIO(text.encode()), **data)
+            responses.append(response)
 
-        if response and not response.get('ok', False):
-            logger.warning('Telegram responded with ok=false status! {}'.format(response))
+        else:
+            text_snippet = text[:1000]
+
+            if self.formatter.parse_mode == HtmlFormatter.parse_mode:
+                text_snippet = close_open_tags(text_snippet)
+            
+            response = self.send_message(text_snippet, **data)
+            responses.append(response)
+
+            response = self.send_document('', document=BytesIO(text.encode()), **data)
+            responses.append(response)
+
+        for response in responses:
+            if response and not response.get('ok', False):
+                logger.warning('Telegram responded with ok=false status! {}'.format(response))
